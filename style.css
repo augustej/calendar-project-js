@@ -1,0 +1,21 @@
+.calendar--container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.week--container{
+    display: flex;
+}
+
+
+.week--container > div {
+    border: 1px solid grey;
+    width: 100px;
+    height: 100px;
+
+}
+
+.active-day{
+    background-color: aqua;
+}
