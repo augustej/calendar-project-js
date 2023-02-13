@@ -4,24 +4,29 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <title>Calendar</title>
 </head>
 <body>
     <nav>
         <ul>
-            <li><a href= "/events.html">Events</a></li>
+            <li><a href= "/events.html" class="active">Events</a></li>
             <li><a href= "/food.html">Food</a></li>
             <li><a href= "/sport.html">Sport</a></li>
         </ul>
     </nav>
-    <h1 class="title">Events Calendar</h1>
-    <div class="month-year-container"></div>
+    <div class="calendar-control--container">
+        <button class="today-btn" type="button">Today</button>
+        <button class="prev-month change-mth" type="button"><</button>
+        <button class="next-month change-mth" type="button">></button>
 
-    <button class="next-month">Next</button>
-    <button class="prev-month">Previous</button>
-    <div class="calendar--container-events" id="calendar-1"></div>
-    <div class="todays-notes--container-events"></div>
+        <div class="month-year-container"></div>
+    </div>
+    <div class="calendar--container-events calendar-display" id="calendar-1"></div>
+    <div class="todays-notes--container-events todays-notes"></div>
 
     <script src="/index.js"></script>
 </body>

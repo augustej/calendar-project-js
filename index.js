@@ -1,5 +1,6 @@
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+// localStorage.removeItem("current-month-day")
 
 let date = new CurrentDate();
 let newCalendar = buildCalendarTemplate()
@@ -8,6 +9,7 @@ let todaysNotes = new TodaysNotes()
 let nextMonth = new ChangeMonthBtn('next')
 let prevMonth = new ChangeMonthBtn('prev')
 let displayMonthAndYear = new MonthAndYearDisplay()
+let todayBtn = new TodayBtn()
 
 function CurrentDate(){
     const d = new Date();
@@ -20,6 +22,12 @@ function CurrentDate(){
     }
 
     this.monthName = months[this.month]
+    this.setToday = function setToday(){
+        this.day = d.getDate();
+        this.month = d.getMonth();
+        this.year = d.getFullYear();
+    }
+
     // this.activeDate = new Date(`${this.year}-${this.month+1}-${this.day}`).getDay()
     // this.weekday = weekdays[this.activeDate];
 }
@@ -133,7 +141,7 @@ function AddNote(){
         document.querySelector(".modal").remove()
     }
     this.saveNote = function saveNote(){
-        let noteTextarea = document.querySelector(".modal > textarea")
+        let noteTextarea = document.querySelector(".inner-modal > textarea")
         let dayId = `${this.noteType}-${date.buildFormatedId()}`
 
         if (noteTextarea.value){
@@ -147,10 +155,12 @@ function AddNote(){
     buildAddNewNoteBtnInDom(this.noteType)
 
     function buildAddNewNoteBtnInDom(noteType){
+        let outerDiv = document.createElement("div")
         let newAddNoteBtn = document.createElement("button")
         newAddNoteBtn.setAttribute("class", `${noteType}-add-note-btn`)
-        newAddNoteBtn.appendChild(document.createTextNode('Add note'))
-        calendarContainer.after(newAddNoteBtn)
+        newAddNoteBtn.appendChild(document.createTextNode('Add new note'))
+        outerDiv.appendChild(newAddNoteBtn)
+        calendarContainer.after(outerDiv)
     
         newAddNoteBtn.addEventListener('click', event =>{
             createNewNoteModal(noteType)
@@ -160,6 +170,9 @@ function AddNote(){
     function createNewNoteModal(noteType){
         // display modal in DOM
         let modal = document.createElement("div")
+        let innerModal = document.createElement("div")
+        innerModal.setAttribute("class", "inner-modal")
+
         modal.setAttribute("class", "modal")
 
         let titleElement = document.createElement("p")
@@ -171,6 +184,7 @@ function AddNote(){
 
         let closeModalBtn = document.createElement("button")
         closeModalBtn.setAttribute("type", "button")
+        closeModalBtn.setAttribute("class", "close-modal-btn")
         closeModalBtn.appendChild(document.createTextNode("X"))
         closeModalBtn.setAttribute("onclick", "addNote.closeModal()")
 
@@ -179,10 +193,11 @@ function AddNote(){
         saveNoteBtn.setAttribute("onclick", "addNote.saveNote()")
         saveNoteBtn.appendChild(document.createTextNode("Save"))
 
-        modal.appendChild(titleElement)
-        modal.appendChild(noteElement)
-        modal.appendChild(closeModalBtn)
-        modal.appendChild(saveNoteBtn)
+        innerModal.appendChild(titleElement)
+        innerModal.appendChild(noteElement)
+        innerModal.appendChild(closeModalBtn)
+        innerModal.appendChild(saveNoteBtn)
+        modal.appendChild(innerModal)
 
         let bodyElement = document.querySelector('body')
         bodyElement.appendChild(modal)
@@ -199,18 +214,38 @@ function DayField(calendarType, date, parentElement){
     function buildDayFieldInDom(){
 
         let dayNr = date.split("-")[2];
+
+        // show month name on the first day of month
+        if (dayNr === '1'){
+            // add/remove current-month class to days of this month
+            if (!localStorage.getItem("current-month-day")){
+                localStorage.setItem("current-month-day", "current-month-day")
+                showMonth('current-month-day month-name')
+            }
+            else{
+                localStorage.removeItem("current-month-day")
+                showMonth('month-name')
+            }
+        }
+
         let dayTextPElement = document.createElement("p")
         dayTextPElement.appendChild(document.createTextNode(dayNr))
+
+        // add current-month class to days of this month
+        let currentMonthDay = localStorage.getItem("current-month-day")
+        if (currentMonthDay){
+            dayTextPElement.setAttribute("class", `${currentMonthDay} day-nr`)
+        }
+        else{
+            dayTextPElement.setAttribute("class", `day-nr`)
+        }
+
         newDayField.setAttribute("id", this.id)
         newDayField.appendChild(dayTextPElement)
         parentElement.appendChild(newDayField)
 
-        // show month name on the first day of month
-        if (dayNr === '1'){showMonth()}
-
         // add notes from local storage if any
         if (DataService('READ', newDayField.id)){showNotes()}
-
     }
 
     function showNotes(){
@@ -219,9 +254,10 @@ function DayField(calendarType, date, parentElement){
         })
     }
 
-    function showMonth(){
+    function showMonth(classToAdd){
         let monthText = document.createTextNode(months[(parseInt(date.split("-")[1]) - 1)].slice(0,3))
         let monthTextPElement = document.createElement("p")
+        monthTextPElement.setAttribute("class", classToAdd)
         monthTextPElement.appendChild(monthText)
         newDayField.insertBefore(monthTextPElement, newDayField.firstChild)
     }
@@ -260,6 +296,16 @@ function ChangeMonthBtn(type){
             }
             else {date.month += 1} 
         }
+        buildCalendarTemplate()
+        refreshDayInDom(`${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
+        displayMonthAndYear.refresh()
+    })
+}
+
+function TodayBtn(){
+    let todayBtn = document.querySelector(".today-btn")
+    todayBtn.addEventListener("click", e =>{
+        date.setToday()
         buildCalendarTemplate()
         refreshDayInDom(`${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
         displayMonthAndYear.refresh()
