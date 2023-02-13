@@ -1,8 +1,36 @@
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+let date = new CurrentDate();
+let newCalendar = buildCalendarTemplate()
+let addNote = new AddNote()
+let todaysNotes = new TodaysNotes()
+let nextMonth = new ChangeMonthBtn('next')
+let prevMonth = new ChangeMonthBtn('prev')
+
 function getCalendarTypeFromHref(){
     return window.location.href.split("/").pop().split(".")[0]
+}
+
+function refreshDayInDom(dayId){
+    let calendarField = document.querySelector(`#${dayId}`)
+
+    // delete all notes before refreshing notes in day field
+    let alreadyDisplayedNotes = calendarField.querySelectorAll(".note")
+    if (alreadyDisplayedNotes){
+        alreadyDisplayedNotes.forEach(note =>{
+            note.remove()
+        })
+    }
+
+    // refreshing notes in day field
+    if (DataService('READ', dayId)){
+        DataService('READ', dayId).forEach((note)=>{
+            calendarField.appendChild(createNoteElement(note, calendarField))
+        })
+    }
+    // refresh todays notes
+    todaysNotes.refresh()
 }
 
 function buildCalendarTemplate(){
@@ -24,6 +52,7 @@ function buildCalendarTemplate(){
             buildCalendarInDom()
         }
         highlightActiveDay()
+        todaysNotes.refresh()
     }
 
     function highlightActiveDay(){
@@ -104,8 +133,6 @@ function buildCalendarTemplate(){
     }
 }
 
-
-
 function AddNote(){
 
     this.noteType = getCalendarTypeFromHref();
@@ -115,30 +142,41 @@ function AddNote(){
     }
     this.saveNote = function saveNote(){
         let noteTextarea = document.querySelector(".modal > textarea")
+        let dayId = `${this.noteType}-${date.buildFormatedId()}`
+
         if (noteTextarea.value){
-            let dayId = `${this.noteType}-${date.buildFormatedId()}`
             DataService('CREATE', dayId, noteTextarea.value)
         }
-
-        console.log("test")
-        console.log(noteTextarea.value, noteTextarea, "noteTextarea")
+        document.querySelector(".modal").remove()
+        refreshDayInDom(dayId)
     }
 
     let calendarContainer = document.querySelector(`.calendar--container-${this.noteType}`)
-    let newAddNoteBtn = document.createElement("button")
-    newAddNoteBtn.setAttribute("class", `${this.noteType}-add-note-btn`)
-    newAddNoteBtn.appendChild(document.createTextNode('Add note'))
-    calendarContainer.after(newAddNoteBtn)
-    newAddNoteBtn.addEventListener('click', event =>{
-        createNewNoteModal(this.noteType)
-    })
+    buildAddNewNoteBtnInDom(this.noteType)
+
+    function buildAddNewNoteBtnInDom(noteType){
+        let newAddNoteBtn = document.createElement("button")
+        newAddNoteBtn.setAttribute("class", `${noteType}-add-note-btn`)
+        newAddNoteBtn.appendChild(document.createTextNode('Add note'))
+        calendarContainer.after(newAddNoteBtn)
+    
+        newAddNoteBtn.addEventListener('click', event =>{
+            createNewNoteModal(noteType)
+        })
+    }
 
     function createNewNoteModal(noteType){
         // display modal in DOM
         let modal = document.createElement("div")
+        modal.setAttribute("class", "modal")
+
         let titleElement = document.createElement("p")
-        let titleText = document.createTextNode(`${date.year}-${(date.month+1).toLocaleString('en-US', {minimumIntegerDigits: 2})}-${date.day} ${noteType}`)
+        titleElement.appendChild(document.createTextNode(`${date.buildFormatedId()} ${noteType}`))
+        titleElement.setAttribute("class", "note-title")
+
         let noteElement = document.createElement("textarea")
+        noteElement.setAttribute("placeholder", "add your note")
+
         let closeModalBtn = document.createElement("button")
         closeModalBtn.setAttribute("type", "button")
         closeModalBtn.appendChild(document.createTextNode("X"))
@@ -149,29 +187,18 @@ function AddNote(){
         saveNoteBtn.setAttribute("onclick", "addNote.saveNote()")
         saveNoteBtn.appendChild(document.createTextNode("Save"))
 
-
-        noteElement.setAttribute("placeholder", "add your note")
-        modal.setAttribute("class", "new-note-modal")
-        titleElement.setAttribute("class", "note-title")
-        titleElement.appendChild(titleText)
-        
-        modal.setAttribute("class", "modal")
         modal.appendChild(titleElement)
         modal.appendChild(noteElement)
         modal.appendChild(closeModalBtn)
         modal.appendChild(saveNoteBtn)
 
-
         let bodyElement = document.querySelector('body')
         bodyElement.appendChild(modal)
     }
-
-
 }
 
 function CurrentDate(){
     const d = new Date();
-    
     this.day = d.getDate();
     this.month = d.getMonth();
     this.year = d.getFullYear();
@@ -181,27 +208,18 @@ function CurrentDate(){
     }
 
     this.monthName = months[this.month]
-    this.activeDate = new Date(`${this.year}-${this.month+1}-${this.day}`).getDay()
-    this.weekday = weekdays[this.activeDate];
+    // this.activeDate = new Date(`${this.year}-${this.month+1}-${this.day}`).getDay()
+    // this.weekday = weekdays[this.activeDate];
 }
 
-function DataService(method, dayId, body){
-    // localStorage.removeItem(dayId)
-    
-    // create noteId
-    let noteId = localStorage.getItem("noteId")
-    if (!noteId){
-        localStorage.setItem("noteId", 0)
-    }
-    else{        
-        localStorage.setItem("noteId", (parseInt(noteId) + 1))
-    }
+function DataService(method, dayId, body, idToDelete){
 
     let currentNotesArray = JSON.parse(localStorage.getItem(dayId))
     let response = []
 
     switch (method) {
         case 'CREATE':
+            let noteId = createNoteId()
             let newNoteDict = {}
             newNoteDict[noteId] = body
 
@@ -219,16 +237,28 @@ function DataService(method, dayId, body){
             break
 
         case 'DELETE':
-            currentNotesArray.filter((noteObject) =>{
-                if (key in noteObject !== noteId){
+            let modifiedArray = currentNotesArray.filter((noteObject) =>{
+                if (Object.keys(noteObject)[0] !== idToDelete){
                     return true
                 }
-            })
-            localStorage.setItem(dayId, JSON.stringify(currentNotesArray))
+            })            
+            modifiedArray.length === 0 ? modifiedArray = null : modifiedArray = modifiedArray
+            localStorage.setItem(dayId, JSON.stringify(modifiedArray))
             break
     }
     return response
 
+    function createNoteId(){
+        let noteId = localStorage.getItem("noteId")
+        if (!noteId){
+            localStorage.setItem("noteId", 0)
+            noteId = 0
+        }
+        else{        
+            localStorage.setItem("noteId", (parseInt(noteId) + 1))
+        }
+        return noteId
+    }
 }
 
 function DayField(calendarType, date, parentElement){
@@ -240,16 +270,15 @@ function DayField(calendarType, date, parentElement){
 
     function buildDayFieldInDom(){
 
-        let dayToDisplay = date.split("-")[2];
+        let dayNr = date.split("-")[2];
         let dayTextPElement = document.createElement("p")
-        let dayText = document.createTextNode(dayToDisplay)
+        dayTextPElement.appendChild(document.createTextNode(dayNr))
         newDayField.setAttribute("id", this.id)
-        dayTextPElement.appendChild(dayText)
         newDayField.appendChild(dayTextPElement)
         parentElement.appendChild(newDayField)
 
         // show month name on the first day of month
-        if (dayToDisplay === '1'){showMonth()}
+        if (dayNr === '1'){showMonth()}
 
         // add notes from local storage if any
         if (DataService('READ', newDayField.id)){showNotes()}
@@ -258,19 +287,8 @@ function DayField(calendarType, date, parentElement){
 
     function showNotes(){
         DataService('READ', this.id).forEach((note)=>{
-            newDayField.appendChild( createNoteElement(note))
+            newDayField.appendChild( createNoteElement(note, newDayField))
         })
-    }
-
-    function createNoteElement(note){
-        let noteId = Object.keys(note)[0]
-        let noteText = note[noteId]
-        let pElement = document.createElement("p")
-        pElement.setAttribute("id", noteId)
-        let textElement = document.createTextNode(noteText)
-        pElement.appendChild(textElement)
-        newDayField.appendChild( pElement)
-        return pElement
     }
 
     function showMonth(){
@@ -281,18 +299,66 @@ function DayField(calendarType, date, parentElement){
     }
 }
 
+function deleteNote(event){
+    let idToDelete = event.target.parentElement.getAttribute("id")
+    let dayId = `${getCalendarTypeFromHref()}-${date.buildFormatedId()}`
+    DataService('DELETE', dayId, "", idToDelete)
+    refreshDayInDom(dayId)
+}
 
-let date = new CurrentDate();
-let newCalendar = buildCalendarTemplate()
-let addNote = new AddNote()
-// DataService('CREATE', 'events-2023-02-14', 'id5', 'Valennt')
+function createNoteElement(note, parentElement){
+    let noteId = Object.keys(note)[0]
+    let noteText = note[noteId]
+    let pElement = document.createElement("p")
+    let deleteElement = document.createElement("button")
+    deleteElement.appendChild(document.createTextNode("X"))
+    deleteElement.setAttribute("class", "delete-note")
+    deleteElement.setAttribute("type", "button")
+    deleteElement.setAttribute("onclick", "deleteNote(event)")
 
-let nextMonthBtn = document.querySelector(".next-month")
+    pElement.appendChild(deleteElement)
+    pElement.setAttribute("id", noteId)
+    pElement.setAttribute("class", "note")
+    let textElement = document.createTextNode(noteText)
+    pElement.appendChild(textElement)
+    parentElement.appendChild( pElement)
+    return pElement
+}
 
-nextMonthBtn.addEventListener('click', event =>{
-    date.month = 5;
-    calendarContainer.innerHTML = ""
-    newCalendar = CalendarTemplate(date.day, date.month, date.year)
+function TodaysNotes(){
 
+    this.refresh = function refresh(){
+        let todaysNotesArray = DataService('READ', `${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
+        let parent = document.querySelector(`.todays-notes--container-${getCalendarTypeFromHref()}`)
+        parent.innerHTML = ""
+        if (todaysNotesArray){
+            todaysNotesArray.forEach((note)=>{
+                parent.appendChild(createNoteElement(note, parent))
+            })
+        }
+    }
+    this.refresh()
+}
 
-})
+function ChangeMonthBtn(type){
+    let btn = document.querySelector(`.${type}-month`)
+    btn.addEventListener('click', event =>{
+        date.day = 1
+        if (type === 'prev'){
+            if (date.month === 0){
+                date.year = date.year-1
+                date.month = 11
+            }
+            else {date.month -= 1} 
+        }
+        else{
+            if (date.month === 11){
+                date.year = date.year+1
+                date.month = 0
+            }
+            else {date.month += 1} 
+        }
+        buildCalendarTemplate()
+        refreshDayInDom(`${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
+    })
+}
