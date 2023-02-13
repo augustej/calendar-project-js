@@ -7,30 +7,21 @@ let addNote = new AddNote()
 let todaysNotes = new TodaysNotes()
 let nextMonth = new ChangeMonthBtn('next')
 let prevMonth = new ChangeMonthBtn('prev')
+let displayMonthAndYear = new MonthAndYearDisplay()
 
-function getCalendarTypeFromHref(){
-    return window.location.href.split("/").pop().split(".")[0]
-}
+function CurrentDate(){
+    const d = new Date();
+    this.day = d.getDate();
+    this.month = d.getMonth();
+    this.year = d.getFullYear();
 
-function refreshDayInDom(dayId){
-    let calendarField = document.querySelector(`#${dayId}`)
-
-    // delete all notes before refreshing notes in day field
-    let alreadyDisplayedNotes = calendarField.querySelectorAll(".note")
-    if (alreadyDisplayedNotes){
-        alreadyDisplayedNotes.forEach(note =>{
-            note.remove()
-        })
+    this.buildFormatedId = function buildFormatedId(){
+        return `${this.year}-${(this.month+1).toLocaleString('en-US', {minimumIntegerDigits: 2 })}-${this.day}`
     }
 
-    // refreshing notes in day field
-    if (DataService('READ', dayId)){
-        DataService('READ', dayId).forEach((note)=>{
-            calendarField.appendChild(createNoteElement(note, calendarField))
-        })
-    }
-    // refresh todays notes
-    todaysNotes.refresh()
+    this.monthName = months[this.month]
+    // this.activeDate = new Date(`${this.year}-${this.month+1}-${this.day}`).getDay()
+    // this.weekday = weekdays[this.activeDate];
 }
 
 function buildCalendarTemplate(){
@@ -53,6 +44,7 @@ function buildCalendarTemplate(){
         }
         highlightActiveDay()
         todaysNotes.refresh()
+        displayMonthAndYear.refresh()
     }
 
     function highlightActiveDay(){
@@ -197,19 +189,92 @@ function AddNote(){
     }
 }
 
-function CurrentDate(){
-    const d = new Date();
-    this.day = d.getDate();
-    this.month = d.getMonth();
-    this.year = d.getFullYear();
+function DayField(calendarType, date, parentElement){
+    
+    this.id = `${calendarType}-${date}`
+    
+    let newDayField = document.createElement("div");
+    buildDayFieldInDom()
 
-    this.buildFormatedId = function buildFormatedId(){
-        return `${this.year}-${(this.month+1).toLocaleString('en-US', {minimumIntegerDigits: 2 })}-${this.day}`
+    function buildDayFieldInDom(){
+
+        let dayNr = date.split("-")[2];
+        let dayTextPElement = document.createElement("p")
+        dayTextPElement.appendChild(document.createTextNode(dayNr))
+        newDayField.setAttribute("id", this.id)
+        newDayField.appendChild(dayTextPElement)
+        parentElement.appendChild(newDayField)
+
+        // show month name on the first day of month
+        if (dayNr === '1'){showMonth()}
+
+        // add notes from local storage if any
+        if (DataService('READ', newDayField.id)){showNotes()}
+
     }
 
-    this.monthName = months[this.month]
-    // this.activeDate = new Date(`${this.year}-${this.month+1}-${this.day}`).getDay()
-    // this.weekday = weekdays[this.activeDate];
+    function showNotes(){
+        DataService('READ', this.id).forEach((note)=>{
+            newDayField.appendChild( createNoteElement(note, newDayField))
+        })
+    }
+
+    function showMonth(){
+        let monthText = document.createTextNode(months[(parseInt(date.split("-")[1]) - 1)].slice(0,3))
+        let monthTextPElement = document.createElement("p")
+        monthTextPElement.appendChild(monthText)
+        newDayField.insertBefore(monthTextPElement, newDayField.firstChild)
+    }
+}
+
+function TodaysNotes(){
+
+    this.refresh = function refresh(){
+        let todaysNotesArray = DataService('READ', `${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
+        let parent = document.querySelector(`.todays-notes--container-${getCalendarTypeFromHref()}`)
+        parent.innerHTML = ""
+        if (todaysNotesArray){
+            todaysNotesArray.forEach((note)=>{
+                parent.appendChild(createNoteElement(note, parent))
+            })
+        }
+    }
+    this.refresh()
+}
+
+function ChangeMonthBtn(type){
+    let btn = document.querySelector(`.${type}-month`)
+    btn.addEventListener('click', event =>{
+        date.day = 1
+        if (type === 'prev'){
+            if (date.month === 0){
+                date.year = date.year-1
+                date.month = 11
+            }
+            else {date.month -= 1} 
+        }
+        else{
+            if (date.month === 11){
+                date.year = date.year+1
+                date.month = 0
+            }
+            else {date.month += 1} 
+        }
+        buildCalendarTemplate()
+        refreshDayInDom(`${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
+        displayMonthAndYear.refresh()
+    })
+}
+
+function MonthAndYearDisplay(){
+    this.refresh = function refresh(){
+        let monthAndYearDiv = document.querySelector(".month-year-container")
+        monthAndYearDiv.innerHTML = ""
+        let h2El = document.createElement('h2')
+        h2El.appendChild(document.createTextNode(`${months[date.month]} ${date.year}`))
+        monthAndYearDiv.appendChild(h2El)
+    }
+    this.refresh()
 }
 
 function DataService(method, dayId, body, idToDelete){
@@ -261,44 +326,6 @@ function DataService(method, dayId, body, idToDelete){
     }
 }
 
-function DayField(calendarType, date, parentElement){
-    
-    this.id = `${calendarType}-${date}`
-    
-    let newDayField = document.createElement("div");
-    buildDayFieldInDom()
-
-    function buildDayFieldInDom(){
-
-        let dayNr = date.split("-")[2];
-        let dayTextPElement = document.createElement("p")
-        dayTextPElement.appendChild(document.createTextNode(dayNr))
-        newDayField.setAttribute("id", this.id)
-        newDayField.appendChild(dayTextPElement)
-        parentElement.appendChild(newDayField)
-
-        // show month name on the first day of month
-        if (dayNr === '1'){showMonth()}
-
-        // add notes from local storage if any
-        if (DataService('READ', newDayField.id)){showNotes()}
-
-    }
-
-    function showNotes(){
-        DataService('READ', this.id).forEach((note)=>{
-            newDayField.appendChild( createNoteElement(note, newDayField))
-        })
-    }
-
-    function showMonth(){
-        let monthText = document.createTextNode(months[(parseInt(date.split("-")[1]) - 1)].slice(0,3))
-        let monthTextPElement = document.createElement("p")
-        monthTextPElement.appendChild(monthText)
-        newDayField.insertBefore(monthTextPElement, newDayField.firstChild)
-    }
-}
-
 function deleteNote(event){
     let idToDelete = event.target.parentElement.getAttribute("id")
     let dayId = `${getCalendarTypeFromHref()}-${date.buildFormatedId()}`
@@ -325,40 +352,28 @@ function createNoteElement(note, parentElement){
     return pElement
 }
 
-function TodaysNotes(){
+function getCalendarTypeFromHref(){
+    return window.location.href.split("/").pop().split(".")[0]
+}
 
-    this.refresh = function refresh(){
-        let todaysNotesArray = DataService('READ', `${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
-        let parent = document.querySelector(`.todays-notes--container-${getCalendarTypeFromHref()}`)
-        parent.innerHTML = ""
-        if (todaysNotesArray){
-            todaysNotesArray.forEach((note)=>{
-                parent.appendChild(createNoteElement(note, parent))
-            })
-        }
+function refreshDayInDom(dayId){
+    let calendarField = document.querySelector(`#${dayId}`)
+
+    // delete all notes before refreshing notes in day field
+    let alreadyDisplayedNotes = calendarField.querySelectorAll(".note")
+    if (alreadyDisplayedNotes){
+        alreadyDisplayedNotes.forEach(note =>{
+            note.remove()
+        })
     }
-    this.refresh()
+
+    // refreshing notes in day field
+    if (DataService('READ', dayId)){
+        DataService('READ', dayId).forEach((note)=>{
+            calendarField.appendChild(createNoteElement(note, calendarField))
+        })
+    }
+    // refresh todays notes
+    todaysNotes.refresh()
 }
 
-function ChangeMonthBtn(type){
-    let btn = document.querySelector(`.${type}-month`)
-    btn.addEventListener('click', event =>{
-        date.day = 1
-        if (type === 'prev'){
-            if (date.month === 0){
-                date.year = date.year-1
-                date.month = 11
-            }
-            else {date.month -= 1} 
-        }
-        else{
-            if (date.month === 11){
-                date.year = date.year+1
-                date.month = 0
-            }
-            else {date.month += 1} 
-        }
-        buildCalendarTemplate()
-        refreshDayInDom(`${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
-    })
-}
