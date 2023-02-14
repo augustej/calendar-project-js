@@ -1,6 +1,5 @@
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-// localStorage.removeItem("current-month-day")
 
 let date = new CurrentDate();
 let newCalendar = buildCalendarTemplate()
@@ -10,30 +9,25 @@ let nextMonth = new ChangeMonthBtn('next')
 let prevMonth = new ChangeMonthBtn('prev')
 let displayMonthAndYear = new MonthAndYearDisplay()
 let todayBtn = new TodayBtn()
+let weekNames = window.innerWidth > 600 ? new Weeknames('desktop') : new Weeknames('mobile')
+weekNames.addToDom()
 
 function CurrentDate(){
     const d = new Date();
     this.day = d.getDate();
     this.month = d.getMonth();
     this.year = d.getFullYear();
-
     this.buildFormatedId = function buildFormatedId(){
         return `${this.year}-${(this.month+1).toLocaleString('en-US', {minimumIntegerDigits: 2 })}-${this.day}`
     }
-
-    this.monthName = months[this.month]
     this.setToday = function setToday(){
         this.day = d.getDate();
         this.month = d.getMonth();
         this.year = d.getFullYear();
     }
-
-    // this.activeDate = new Date(`${this.year}-${this.month+1}-${this.day}`).getDay()
-    // this.weekday = weekdays[this.activeDate];
 }
 
 function buildCalendarTemplate(){
-
     let calendarType = getCalendarTypeFromHref();
     let calendarContainer = document.querySelector(`.calendar--container-${calendarType}`);
     calendarContainer.addEventListener('click', (event) => changeCurrentDate(event))
@@ -41,17 +35,23 @@ function buildCalendarTemplate(){
     buildCalendarInDom()
     highlightActiveDay()
 
+    // if clicked on calendar day 
     function changeCurrentDate(event){
+        // update date object created by CurrentDate
         [type, newYear, newMonth, newDay] = event.target.closest('div').id.split("-")
         let newMonthArrayValue = parseInt(newMonth) - 1
         date.day = newDay
         date.year = newYear
+        // if clicked on day of other month -> display other month as current
         if (date.month !== newMonthArrayValue){
             date.month = newMonthArrayValue 
             buildCalendarInDom()
         }
+        // change active day
         highlightActiveDay()
+        // update notes
         todaysNotes.refresh()
+        // update month/year title on top
         displayMonthAndYear.refresh()
     }
 
@@ -67,7 +67,28 @@ function buildCalendarTemplate(){
         activeDateField.setAttribute("class", "active-day")
     }
 
-    function getArrayOfDaysToDisplay(day, month, year){
+    function buildCalendarInDom(){
+        // refresh localStorage before displaying calendar
+        localStorage.removeItem("current-month-day")
+
+        let daysArrayToRepresent = getArrayOfDaysToDisplay(date.month, date.year);
+        calendarContainer.innerHTML = ""
+
+        daysArrayToRepresent.forEach((date, index) =>{
+            // create weeks
+            if (index % 7 === 0 || index === 0){
+                let parentElement = document.createElement("div")
+                parentElement.setAttribute("class", "week--container")
+                calendarContainer.appendChild(parentElement)
+            }
+            // select last created week to add a day
+            let parentElement = document.querySelector(".week--container:last-child")
+            DayField(calendarType, date, parentElement)
+            // add weeknames to the first week
+        })
+    }
+
+    function getArrayOfDaysToDisplay(month, year){
 
         let daysArrayToRepresent = []
 
@@ -114,22 +135,29 @@ function buildCalendarTemplate(){
 
         return daysArrayToRepresent
     }
-    
-    function buildCalendarInDom(){
-        let daysArrayToRepresent = getArrayOfDaysToDisplay(date.day, date.month, date.year);
-        calendarContainer.innerHTML = ""
+}
 
-        daysArrayToRepresent.forEach((date, index) =>{
-            // create weeks
-            if (index % 7 === 0 || index === 0){
-                let parentElement = document.createElement("div")
-                parentElement.setAttribute("class", "week--container")
-                calendarContainer.appendChild(parentElement)
-            }
-            // select last created week to add a day
-            let parentElement = document.querySelector(".week--container:last-child")
-            DayField(calendarType, date, parentElement)
+function Weeknames(weeknamesStyle){
+    // display weeknames
+    this.currentWeeknamesArray = weeknamesStyle;
+    this.addToDom = function addToDom(){
+        let modifiedWeekdayArray = getModifiedWeekdaysArray(this.currentWeeknamesArray)
+        let weekdayElement = document.querySelector(".weekday-names")
+        modifiedWeekdayArray.forEach(weekday=>{
+            let newEl = document.createElement("p")
+            newEl.appendChild(document.createTextNode(weekday))
+            weekdayElement.appendChild(newEl)
         })
+    }
+
+    function getModifiedWeekdaysArray(currentWeeknamesArray){
+        let modifiedWeekdayArray = weekdays.map((name)=> { 
+            let returnValue = currentWeeknamesArray === 'desktop' ? name.substring(0,3) : name.substring(0,1)
+            return returnValue
+        })
+        let sunday = modifiedWeekdayArray.splice(0,1)[0]
+        modifiedWeekdayArray.push(sunday)
+        return modifiedWeekdayArray
     }
 }
 
@@ -156,6 +184,7 @@ function AddNote(){
 
     function buildAddNewNoteBtnInDom(noteType){
         let outerDiv = document.createElement("div")
+        outerDiv.setAttribute("class", "add-note-btn-outer-div")
         let newAddNoteBtn = document.createElement("button")
         newAddNoteBtn.setAttribute("class", `${noteType}-add-note-btn`)
         newAddNoteBtn.appendChild(document.createTextNode('Add new note'))
@@ -215,37 +244,37 @@ function DayField(calendarType, date, parentElement){
 
         let dayNr = date.split("-")[2];
 
-        // show month name on the first day of month
         if (dayNr === '1'){
             // add/remove current-month class to days of this month
-            if (!localStorage.getItem("current-month-day")){
-                localStorage.setItem("current-month-day", "current-month-day")
-                showMonth('current-month-day month-name')
-            }
-            else{
-                localStorage.removeItem("current-month-day")
-                showMonth('month-name')
-            }
+            let className = setCurrentMonthInLocalStorage()
+            // display month name for the first day
+            showMonth(`${className} month-name`)
         }
 
         let dayTextPElement = document.createElement("p")
         dayTextPElement.appendChild(document.createTextNode(dayNr))
 
         // add current-month class to days of this month
-        let currentMonthDay = localStorage.getItem("current-month-day")
-        if (currentMonthDay){
-            dayTextPElement.setAttribute("class", `${currentMonthDay} day-nr`)
-        }
-        else{
-            dayTextPElement.setAttribute("class", `day-nr`)
-        }
-
+        let currentMonthClass = localStorage.getItem("current-month-day")
+        dayTextPElement.setAttribute("class", `${currentMonthClass? currentMonthClass : ""} day-nr`)
+        
         newDayField.setAttribute("id", this.id)
         newDayField.appendChild(dayTextPElement)
         parentElement.appendChild(newDayField)
 
         // add notes from local storage if any
         if (DataService('READ', newDayField.id)){showNotes()}
+
+        function setCurrentMonthInLocalStorage(){
+            if (!localStorage.getItem("current-month-day")){
+                localStorage.setItem("current-month-day", "current-month-day")
+                return "current-month-day"
+            }
+            else{
+                localStorage.removeItem("current-month-day")
+                return ""
+            }
+        }
     }
 
     function showNotes(){
@@ -422,4 +451,3 @@ function refreshDayInDom(dayId){
     // refresh todays notes
     todaysNotes.refresh()
 }
-
