@@ -12,6 +12,11 @@ let todayBtn = new TodayBtn()
 let weekNames = window.innerWidth > 600 ? new Weeknames('desktop') : new Weeknames('mobile')
 weekNames.addToDom()
 
+async function importDataService(){
+    let DataServiceModule = await import("./dataService.js")
+    return DataServiceModule
+}
+
 function CurrentDate(){
     const d = new Date();
     this.day = d.getDate();
@@ -173,7 +178,7 @@ function AddNote(){
         let dayId = `${this.noteType}-${date.buildFormatedId()}`
 
         if (noteTextarea.value){
-            DataService('CREATE', dayId, noteTextarea.value)
+            importDataService().then((module)=> module.DataService('CREATE', dayId, noteTextarea.value))
         }
         document.querySelector(".modal").remove()
         refreshDayInDom(dayId)
@@ -234,7 +239,6 @@ function AddNote(){
 }
 
 function DayField(calendarType, date, parentElement){
-    
     this.id = `${calendarType}-${date}`
     
     let newDayField = document.createElement("div");
@@ -263,7 +267,10 @@ function DayField(calendarType, date, parentElement){
         parentElement.appendChild(newDayField)
 
         // add notes from local storage if any
-        if (DataService('READ', newDayField.id)){showNotes()}
+        importDataService().then( (module) => {
+            let notesArray = module.DataService('READ', newDayField.id)
+            if (notesArray){showNotes(notesArray)}
+        })
 
         function setCurrentMonthInLocalStorage(){
             if (!localStorage.getItem("current-month-day")){
@@ -277,8 +284,8 @@ function DayField(calendarType, date, parentElement){
         }
     }
 
-    function showNotes(){
-        DataService('READ', this.id).forEach((note)=>{
+    function showNotes(notesArray){
+        notesArray.forEach((note)=>{
             newDayField.appendChild( createNoteElement(note, newDayField))
         })
     }
@@ -295,14 +302,16 @@ function DayField(calendarType, date, parentElement){
 function TodaysNotes(){
 
     this.refresh = function refresh(){
-        let todaysNotesArray = DataService('READ', `${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
         let parent = document.querySelector(`.todays-notes--container-${getCalendarTypeFromHref()}`)
         parent.innerHTML = ""
-        if (todaysNotesArray){
-            todaysNotesArray.forEach((note)=>{
-                parent.appendChild(createNoteElement(note, parent))
-            })
-        }
+        importDataService().then( (module) =>{
+            let todaysNotesArray = module.DataService('READ', `${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
+            if (todaysNotesArray){
+                todaysNotesArray.forEach((note)=>{
+                    parent.appendChild(createNoteElement(note, parent))
+                })
+            }
+        })        
     }
     this.refresh()
 }
@@ -336,7 +345,6 @@ function TodayBtn(){
     todayBtn.addEventListener("click", e =>{
         date.setToday()
         buildCalendarTemplate()
-        refreshDayInDom(`${getCalendarTypeFromHref()}-${date.buildFormatedId()}`)
         displayMonthAndYear.refresh()
     })
 }
@@ -352,59 +360,12 @@ function MonthAndYearDisplay(){
     this.refresh()
 }
 
-function DataService(method, dayId, body, idToDelete){
-
-    let currentNotesArray = JSON.parse(localStorage.getItem(dayId))
-    let response = []
-
-    switch (method) {
-        case 'CREATE':
-            let noteId = createNoteId()
-            let newNoteDict = {}
-            newNoteDict[noteId] = body
-
-            if (!currentNotesArray){
-                let newArray = []
-                newArray.push(newNoteDict)
-                localStorage.setItem(dayId, JSON.stringify(newArray))
-                break
-            }
-            currentNotesArray.push(newNoteDict)
-            localStorage.setItem(dayId, JSON.stringify(currentNotesArray))
-            break
-        case 'READ':
-            response = currentNotesArray
-            break
-
-        case 'DELETE':
-            let modifiedArray = currentNotesArray.filter((noteObject) =>{
-                if (Object.keys(noteObject)[0] !== idToDelete){
-                    return true
-                }
-            })            
-            modifiedArray.length === 0 ? modifiedArray = null : modifiedArray = modifiedArray
-            localStorage.setItem(dayId, JSON.stringify(modifiedArray))
-            break
-    }
-    return response
-
-    function createNoteId(){
-        let noteId = localStorage.getItem("noteId")
-        if (!noteId){
-            localStorage.setItem("noteId", 0)
-            noteId = 0
-        }
-        else{        
-            localStorage.setItem("noteId", (parseInt(noteId) + 1))
-        }
-        return noteId
-    }
-}
-
 function deleteNote(event){
     let idToDelete = event.target.parentElement.getAttribute("id")
     let dayId = `${getCalendarTypeFromHref()}-${date.buildFormatedId()}`
-    DataService('DELETE', dayId, "", idToDelete)
+    importDataService().then( (module) =>{
+        module.DataService('DELETE', dayId, "", idToDelete)
+    })
     refreshDayInDom(dayId)
 }
 
@@ -436,18 +397,20 @@ function refreshDayInDom(dayId){
 
     // delete all notes before refreshing notes in day field
     let alreadyDisplayedNotes = calendarField.querySelectorAll(".note")
-    if (alreadyDisplayedNotes){
-        alreadyDisplayedNotes.forEach(note =>{
-            note.remove()
-        })
-    }
+    alreadyDisplayedNotes.forEach(note =>{
+        note.remove()
+    })
 
     // refreshing notes in day field
-    if (DataService('READ', dayId)){
-        DataService('READ', dayId).forEach((note)=>{
-            calendarField.appendChild(createNoteElement(note, calendarField))
-        })
-    }
+    importDataService().then( (module) =>{
+        let notesArray = module.DataService('READ', dayId)
+        if (notesArray){
+            notesArray.forEach((note)=>{
+                calendarField.appendChild(createNoteElement(note, calendarField))
+            })
+        }
+    })
+
     // refresh todays notes
     todaysNotes.refresh()
 }
