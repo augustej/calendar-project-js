@@ -1,4 +1,4 @@
-import { months, date } from "/jsModules/index.js"
+import { months, date } from "./index.js"
 
 export function MonthAndYearDisplay(){
     this.refresh = function refresh(){

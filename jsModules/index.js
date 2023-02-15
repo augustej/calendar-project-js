@@ -1,12 +1,12 @@
-import { DataService } from "/jsModules/dataService.js";
-import { CurrentDate } from "/jsModules/currentDate.js";
-import { buildCalendarTemplate } from "/jsModules/buildCalendarTemplate.js";
-import { noteFunctionality } from "/jsModules/noteFunctionality.js";
-import { ChangeMonthBtn } from "/jsModules/changeMonthBtn.js";
-import { MonthAndYearDisplay } from "/jsModules/monthAndYearDisplay.js";
-import { Weeknames } from "/jsModules/displayWeeknames.js";
-import { TodaysNotes } from "/jsModules/todaysNotes.js";
-import { TodayBtn } from "/jsModules/todayBtn.js";
+import { DataService } from "./dataService.js";
+import { CurrentDate } from "./currentDate.js";
+import { buildCalendarTemplate } from "./buildCalendarTemplate.js";
+import { noteFunctionality } from "./noteFunctionality.js";
+import { ChangeMonthBtn } from "./changeMonthBtn.js";
+import { MonthAndYearDisplay } from "./monthAndYearDisplay.js";
+import { Weeknames } from "./displayWeeknames.js";
+import { TodaysNotes } from "./todaysNotes.js";
+import { TodayBtn } from "./todayBtn.js";
 
 export const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 export let date = new CurrentDate();

@@ -1,5 +1,5 @@
-import { date, months , getCalendarTypeFromHref, createNoteElement, todaysNotes, displayMonthAndYear} from "/jsModules/index.js"
-import { DataService } from "/jsModules//dataService.js"
+import { date, months , getCalendarTypeFromHref, createNoteElement, todaysNotes, displayMonthAndYear} from "./index.js"
+import { DataService } from "./dataService.js"
 
 function buildCalendarTemplate(){
     let calendarType = getCalendarTypeFromHref();

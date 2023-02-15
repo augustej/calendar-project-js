@@ -1,5 +1,5 @@
-import { date, getCalendarTypeFromHref, displayMonthAndYear, refreshDayInDom} from "/jsModules/index.js"
-import { buildCalendarTemplate } from "/jsModules/buildCalendarTemplate.js"
+import { date, getCalendarTypeFromHref, displayMonthAndYear, refreshDayInDom} from "./index.js"
+import { buildCalendarTemplate } from "./buildCalendarTemplate.js"
 
 export function ChangeMonthBtn(type){
     let btn = document.querySelector(`.${type}-month`)

@@ -1,6 +1,6 @@
 
-import { getCalendarTypeFromHref , date, createNoteElement} from "/jsModules/index.js"
-import { DataService } from "/jsModules/dataService.js"
+import { getCalendarTypeFromHref , date, createNoteElement} from "./index.js"
+import { DataService } from "./dataService.js"
 
 export function TodaysNotes(){
 

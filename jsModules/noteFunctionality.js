@@ -1,5 +1,5 @@
-import { getCalendarTypeFromHref , date, refreshDayInDom} from "/jsModules/index.js";
-import { DataService } from "/jsModules/dataService.js";
+import { getCalendarTypeFromHref , date, refreshDayInDom} from "./index.js";
+import { DataService } from "./dataService.js";
 
 export function noteFunctionality(){
 
